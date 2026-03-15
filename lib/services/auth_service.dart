@@ -116,7 +116,8 @@ class AuthService extends ChangeNotifier {
     await _printKeyHash();
     // Firebase Auth 상태 확인
     final firebaseUser = fb.FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null) {
+    // 익명 세션은 카카오 로그인용 보조 세션이므로 본인 계정으로 취급하지 않음
+    if (firebaseUser != null && !firebaseUser.isAnonymous) {
       _currentUser = _fromFirebaseUser(firebaseUser);
       await _loadAdditionalUserData();
       _loading = false;
@@ -134,6 +135,10 @@ class AuthService extends ChangeNotifier {
         final id = prefs.getString(_prefKeyKakaoId);
         final nick = prefs.getString(_prefKeyKakaoNick);
         if (id != null && nick != null) {
+          // Firestore 접근 권한(request.auth)을 위한 Firebase 익명 세션 복원
+          if (fb.FirebaseAuth.instance.currentUser == null) {
+            await fb.FirebaseAuth.instance.signInAnonymously();
+          }
           _currentUser = AppUser(
             id: id,
             nickname: nick,
@@ -144,6 +149,15 @@ class AuthService extends ChangeNotifier {
           await _loadAdditionalUserData();
           _backfillCommentProfileImages(_currentUser!);
         }
+      }
+    }
+
+    // 비로그인(게스트)도 Firestore 쓰기 권한(request.auth)이 필요하므로 익명 로그인
+    if (_currentUser == null && fb.FirebaseAuth.instance.currentUser == null) {
+      try {
+        await fb.FirebaseAuth.instance.signInAnonymously();
+      } catch (e) {
+        debugPrint('[AuthService] 게스트 익명 로그인 실패: $e');
       }
     }
 
