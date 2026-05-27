@@ -180,7 +180,10 @@ class AuthService extends ChangeNotifier {
         result = await fb.FirebaseAuth.instance.signInWithPopup(googleProvider);
       } else {
         // 모바일: google_sign_in 패키지 방식
-        final googleUser = await GoogleSignIn().signIn();
+        // 이전 세션 캐시를 제거해 항상 계정 선택창이 뜨도록 함
+        final _gsi = GoogleSignIn();
+        await _gsi.signOut();
+        final googleUser = await _gsi.signIn();
         if (googleUser == null) return null;
 
         final googleAuth = await googleUser.authentication;

@@ -5,6 +5,8 @@ import 'login_screen.dart';
 import 'community_post_create_screen.dart';
 import 'community_post_detail_screen.dart';
 import 'user_profile_screen.dart';
+// ignore: unused_import
+import '../admin_config.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -156,6 +158,37 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               docId: docId, post: data),
                         ),
                       ),
+                      onAdminDelete: AuthService.instance.isAdmin
+                          ? () async {
+                              final ok = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('게시글 삭제'),
+                                  content: Text(
+                                      '"${data['title'] ?? ''}" 을(를) 삭제하시겠습니까?'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, false),
+                                        child: const Text('취소')),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, true),
+                                      child: const Text('삭제',
+                                          style:
+                                              TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (ok == true) {
+                                await FirebaseFirestore.instance
+                                    .collection('community')
+                                    .doc(docId)
+                                    .delete();
+                              }
+                            }
+                          : null,
                     );
                   },
                 );
@@ -171,7 +204,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
 class _PostCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final VoidCallback onTap;
-  const _PostCard({required this.data, required this.onTap});
+  final VoidCallback? onAdminDelete;
+  const _PostCard({
+    required this.data,
+    required this.onTap,
+    this.onAdminDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -240,6 +278,14 @@ class _PostCard extends StatelessWidget {
                     const Spacer(),
                     Text(_formatDate(data['timestamp']),
                         style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    if (onAdminDelete != null) ...[
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: onAdminDelete,
+                        child: const Icon(Icons.delete_outline,
+                            size: 16, color: Colors.red),
+                      ),
+                    ],
                   ]),
                   const SizedBox(height: 8),
                   Text(data['title'] ?? '',

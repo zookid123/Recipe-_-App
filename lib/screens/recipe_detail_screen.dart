@@ -459,10 +459,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         elevation: 0,
         surfaceTintColor: Colors.white,
         actions: [
-          // 본인 작성글일 경우 관리 메뉴 표시
-          if (widget.recipe['authorId'] != null &&
-              AuthService.instance.isLoggedIn &&
-              AuthService.instance.currentUser!.id == widget.recipe['authorId'])
+          // 본인 작성글 or 관리자 메뉴
+          if (AuthService.instance.isLoggedIn &&
+              (AuthService.instance.isAdmin ||
+                  (widget.recipe['authorId'] != null &&
+                      AuthService.instance.currentUser!.id ==
+                          widget.recipe['authorId'])))
             PopupMenuButton<String>(
               onSelected: (val) {
                 if (val == 'edit') {
@@ -473,10 +475,15 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               },
               icon: const Icon(Icons.more_vert, color: Colors.black87),
               itemBuilder: (context) => [
-                const PopupMenuItem(value: 'edit', child: Text('수정하기')),
-                const PopupMenuItem(
+                if (!AuthService.instance.isAdmin ||
+                    widget.recipe['source'] == 'ugc')
+                  const PopupMenuItem(value: 'edit', child: Text('수정하기')),
+                PopupMenuItem(
                   value: 'delete',
-                  child: Text('삭제하기', style: TextStyle(color: Colors.red)),
+                  child: Text(
+                    AuthService.instance.isAdmin ? '🗑️ 관리자 삭제' : '삭제하기',
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
               ],
             ),

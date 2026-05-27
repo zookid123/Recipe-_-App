@@ -8,6 +8,7 @@ import 'recent_recipes_screen.dart';
 import 'bookmarks_screen.dart';
 import 'my_activity_screen.dart';
 import 'fridge_screen.dart';
+import 'admin_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -188,6 +189,22 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ]),
 
             const SizedBox(height: 12),
+
+            // 관리자 패널 (관리자 계정으로 로그인 시에만 표시)
+            if (AuthService.instance.isAdmin) ...[
+              _menuSection('⚙️ 관리자', [
+                _MenuItem(
+                  Icons.admin_panel_settings_outlined,
+                  '관리자 패널',
+                  '레시피·커뮤니티·유저·동기화',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminScreen()),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+            ],
 
             // 설정
             _menuSection('설정', [
