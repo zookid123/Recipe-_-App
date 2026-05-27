@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "51232428753",
+    "project_id": "shingu-3aced",
+    "storage_bucket": "shingu-3aced.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51232428753:android:9489c05118301c8f6bebf0",
+        "android_client_info": {
+          "package_name": "com.company.sgrecipes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkuEAtKOpHScBMKCDTvkaOFKEmRrjCikY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51232428753:android:de62c7bea0f72ca06bebf0",
+        "android_client_info": {
+          "package_name": "com.example.sg_recipes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkuEAtKOpHScBMKCDTvkaOFKEmRrjCikY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(flutter devices *)",
+      "Bash(flutter run *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\111-05\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-111-05-project-c-project-c-test-app\\\\2e3a6781-b7ed-4818-af8c-5fa43577b6b5\\\\tasks\\\\bj87kwih8.output\" -Tail 30)",
+      "Bash(npx playwright *)",
+      "Bash(node *)",
+      "Bash(cd /tmp)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(netstat -ano)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(New-Item *)"
+    ]
+  }
+}
