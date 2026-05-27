@@ -70,6 +70,12 @@ class AuthService extends ChangeNotifier {
   static const _prefKeyKakaoImg = 'kakao_user_img';
   static const _prefKeyProvider = 'auth_provider';
 
+  // 최근 로그인 힌트 (자동 로그인 없이 계정 정보만 보존)
+  static const _hintProvider = 'hint_provider';
+  static const _hintNickname = 'hint_nickname';
+  static const _hintEmail = 'hint_email';
+  static const _hintProfileImg = 'hint_profile_img';
+
   /// 앱 시작 시 호출 — 저장된 세션 복원
   Future<void> _printKeyHash() async {
     try {
@@ -82,39 +88,71 @@ class AuthService extends ChangeNotifier {
 
   Future<void> init() async {
     await _printKeyHash();
-    // Firebase Auth 상태 확인
+    final prefs = await SharedPreferences.getInstance();
+
+    // ── Google(Firebase) 세션 감지 → 힌트 저장 후 세션 초기화 ──────────
+    // GoogleSignIn 캐시는 유지해 빠른 재로그인을 지원함
     final firebaseUser = fb.FirebaseAuth.instance.currentUser;
     if (firebaseUser != null) {
-      _currentUser = _fromFirebaseUser(firebaseUser);
-      _loading = false;
-      notifyListeners();
-      _backfillCommentProfileImages(_currentUser!);
-      return;
+      await _saveHintFromFirebase(firebaseUser, prefs);
+      await fb.FirebaseAuth.instance.signOut();
     }
 
-    // 카카오 세션 복원
-    final prefs = await SharedPreferences.getInstance();
+    // ── 카카오 세션 감지 → 힌트 저장, 자동 복원 안 함 ──────────────────
     final provider = prefs.getString(_prefKeyProvider);
     if (provider == 'kakao') {
-      final isValid = await AuthApi.instance.hasToken();
-      if (isValid) {
-        final id = prefs.getString(_prefKeyKakaoId);
-        final nick = prefs.getString(_prefKeyKakaoNick);
-        if (id != null && nick != null) {
-          _currentUser = AppUser(
-            id: id,
-            nickname: nick,
-            email: prefs.getString(_prefKeyKakaoEmail),
-            profileImageUrl: prefs.getString(_prefKeyKakaoImg),
-            provider: 'kakao',
-          );
-          _backfillCommentProfileImages(_currentUser!);
-        }
+      final nick = prefs.getString(_prefKeyKakaoNick);
+      if (nick != null) {
+        await prefs.setString(_hintProvider, 'kakao');
+        await prefs.setString(_hintNickname, nick);
+        final email = prefs.getString(_prefKeyKakaoEmail);
+        final img = prefs.getString(_prefKeyKakaoImg);
+        if (email != null) await prefs.setString(_hintEmail, email);
+        if (img != null) await prefs.setString(_hintProfileImg, img);
       }
     }
 
     _loading = false;
     notifyListeners();
+  }
+
+  /// Firebase 유저 정보를 "최근 로그인" 힌트로 저장
+  Future<void> _saveHintFromFirebase(
+      fb.User user, SharedPreferences prefs) async {
+    await prefs.setString(_hintProvider, 'google');
+    await prefs.setString(
+        _hintNickname,
+        user.displayName ??
+            user.email?.split('@').first ??
+            '사용자');
+    if (user.email != null) {
+      await prefs.setString(_hintEmail, user.email!);
+    }
+    if (user.photoURL != null) {
+      await prefs.setString(_hintProfileImg, user.photoURL!);
+    }
+  }
+
+  /// 로그인 성공 시 힌트 갱신 (계정 전환 대응)
+  Future<void> _saveHint(AppUser user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_hintProvider, user.provider);
+    await prefs.setString(_hintNickname, user.nickname);
+    if (user.email != null) await prefs.setString(_hintEmail, user.email!);
+    if (user.profileImageUrl != null) {
+      await prefs.setString(_hintProfileImg, user.profileImageUrl!);
+    }
+  }
+
+  /// 최근 로그인 힌트 조회 (로그인 화면 표시용)
+  Future<Map<String, String?>> getLastLoginHint() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'provider': prefs.getString(_hintProvider),
+      'nickname': prefs.getString(_hintNickname),
+      'email': prefs.getString(_hintEmail),
+      'profileImg': prefs.getString(_hintProfileImg),
+    };
   }
 
   /// 기존 댓글에 authorProfileImg 가 없는 경우 현재 프로필 이미지로 채움.
@@ -181,9 +219,9 @@ class AuthService extends ChangeNotifier {
       } else {
         // 모바일: google_sign_in 패키지 방식
         // 이전 세션 캐시를 제거해 항상 계정 선택창이 뜨도록 함
-        final _gsi = GoogleSignIn();
-        await _gsi.signOut();
-        final googleUser = await _gsi.signIn();
+        final gsi = GoogleSignIn();
+        await gsi.signOut();
+        final googleUser = await gsi.signIn();
         if (googleUser == null) return null;
 
         final googleAuth = await googleUser.authentication;
@@ -199,11 +237,47 @@ class AuthService extends ChangeNotifier {
 
       _currentUser = _fromFirebaseUser(user);
       await _saveUserToFirestore(_currentUser!);
+      await _saveHint(_currentUser!);
       notifyListeners();
       _backfillCommentProfileImages(_currentUser!);
       return _currentUser;
     } catch (e) {
       debugPrint('[AuthService] Google 로그인 오류: $e');
+      rethrow;
+    }
+  }
+
+  // ─── Google 빠른 재로그인 (계정 선택창 없이) ─────────────────────────
+  // 로그인 힌트 카드를 탭할 때 사용 — GoogleSignIn 캐시 활용
+  Future<AppUser?> signInWithGoogleQuick() async {
+    try {
+      fb.UserCredential result;
+      if (kIsWeb) {
+        final googleProvider = fb.GoogleAuthProvider();
+        result =
+            await fb.FirebaseAuth.instance.signInWithPopup(googleProvider);
+      } else {
+        // signOut() 없이 signIn → 캐시된 계정 자동 선택
+        final googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) return null;
+        final googleAuth = await googleUser.authentication;
+        final credential = fb.GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        result =
+            await fb.FirebaseAuth.instance.signInWithCredential(credential);
+      }
+      final user = result.user;
+      if (user == null) return null;
+      _currentUser = _fromFirebaseUser(user);
+      await _saveUserToFirestore(_currentUser!);
+      await _saveHint(_currentUser!);
+      notifyListeners();
+      _backfillCommentProfileImages(_currentUser!);
+      return _currentUser;
+    } catch (e) {
+      debugPrint('[AuthService] Google 빠른 로그인 오류: $e');
       rethrow;
     }
   }
@@ -253,6 +327,7 @@ class AuthService extends ChangeNotifier {
       if (imgUrl != null) await prefs.setString(_prefKeyKakaoImg, imgUrl);
 
       await _saveUserToFirestore(_currentUser!);
+      await _saveHint(_currentUser!);
       notifyListeners();
       _backfillCommentProfileImages(_currentUser!);
       return _currentUser;
