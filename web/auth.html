@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Kakao Auth Redirect</title>
+</head>
+<body>
+    <script>
+        // 카카오 서버로부터 받은 인증 코드를 부모 창(Flutter 앱)으로 전달합니다.
+        window.onload = function() {
+            if (window.opener) {
+                // Kakao SDK가 기대하는 방식으로 부모 창에 메시지를 보냅니다.
+                window.opener.postMessage(window.location.href, window.location.origin);
+                window.close();
+            } else {
+                // 팝업이 아닌 경우 (직접 이동한 경우 등)
+                location.href = "/";
+            }
+        };
+    </script>
+</body>
+</html>
