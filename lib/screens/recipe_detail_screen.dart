@@ -6,6 +6,8 @@ import '../services/auth_service.dart';
 import 'recipe_create_screen.dart';
 import 'user_profile_screen.dart';
 
+import 'cooking_mode_screen.dart';
+
 class RecipeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> recipe;
   const RecipeDetailScreen({super.key, required this.recipe});
@@ -409,6 +411,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             'authorProfileImg': (!_isAnonymous && user != null)
                 ? user.profileImageUrl
                 : null,
+            'authorTitle': (!_isAnonymous && user != null) ? user.selectedTitle : null,
             'rating': _selectedRating > 0 ? _selectedRating : null,
             'createdAt': FieldValue.serverTimestamp(),
           });
@@ -812,9 +815,40 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '👨‍🍳 조리 순서',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '👨‍🍳 조리 순서',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                if (steps.isNotEmpty)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CookingModeScreen(
+                            recipeName: widget.recipe['name'] ?? '레시피',
+                            steps: steps,
+                            stepImages: widget.recipe['stepImages'],
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.play_circle_fill, size: 18),
+                    label: const Text('요리 시작'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             ...steps.asMap().entries.map(
@@ -1307,9 +1341,20 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
   final _replyCtrl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    AuthService.instance.addListener(_onAuthChanged);
+  }
+
+  @override
   void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
     _replyCtrl.dispose();
     super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _editComment() async {
@@ -1514,6 +1559,21 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
                           color: Colors.black87),
                     ),
                   ),
+                  if ((d['authorTitle'] as String?) != null) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.amber.shade300, width: 0.5),
+                      ),
+                      child: Text(
+                        d['authorTitle'] as String,
+                        style: TextStyle(fontSize: 9, color: Colors.amber.shade700, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                   if (userId != null &&
                       userId.isNotEmpty &&
                       userId == widget.recipeAuthorId) ...[

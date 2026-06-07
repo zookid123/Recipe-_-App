@@ -103,6 +103,7 @@ class _CommunityPostCreateScreenState
         'authorId': user.id,
         'authorName': user.nickname,
         'authorProfileImg': user.profileImageUrl ?? '',
+        'authorTitle': user.selectedTitle,
       };
 
       if (widget.docId != null) {
