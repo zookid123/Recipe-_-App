@@ -240,6 +240,7 @@ class _CommunityPostDetailScreenState
   Widget build(BuildContext context) {
     final user = AuthService.instance.currentUser;
     final isPostAuthor = user != null && user.id == widget.post['authorId'];
+    final isAdmin = AuthService.instance.isAdmin;
     final hasImg = (widget.post['imgUrl'] ?? '').toString().isNotEmpty;
     final category = widget.post['category'] ?? '자유';
 
@@ -251,7 +252,7 @@ class _CommunityPostDetailScreenState
         foregroundColor: Colors.black87,
         elevation: 0,
         actions: [
-          if (isPostAuthor)
+          if (isPostAuthor || isAdmin)
             PopupMenuButton<String>(
               onSelected: (val) {
                 if (val == 'edit') {
@@ -264,7 +265,8 @@ class _CommunityPostDetailScreenState
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('수정')),
+                if (isPostAuthor)
+                  const PopupMenuItem(value: 'edit', child: Text('수정')),
                 const PopupMenuItem(
                     value: 'delete',
                     child: Text('삭제', style: TextStyle(color: Colors.red))),
@@ -292,14 +294,31 @@ class _CommunityPostDetailScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _categoryColor(category).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(category,
-                              style: TextStyle(fontSize: 12, color: _categoryColor(category), fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _categoryColor(category).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(category,
+                                  style: TextStyle(fontSize: 12, color: _categoryColor(category), fontWeight: FontWeight.bold)),
+                            ),
+                            const Spacer(),
+                            if (user != null && user.id != widget.post['authorId'])
+                              GestureDetector(
+                                onTap: _startChat,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.send_rounded, size: 16, color: Colors.orange),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Text(widget.post['title'] ?? '',
@@ -383,23 +402,6 @@ class _CommunityPostDetailScreenState
                             ]),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        // 채팅하기 버튼 추가
-                        if (user != null && user.id != widget.post['authorId'])
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _startChat,
-                              icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                              label: const Text('작성자와 채팅하기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.orange,
-                                side: const BorderSide(color: Colors.orange),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                              ),
-                            ),
-                          ),
                         const SizedBox(height: 16),
                         if (hasImg) ...[
                           ClipRRect(
@@ -475,12 +477,13 @@ class _CommunityPostDetailScreenState
                         children: comments.map((doc) {
                           final c = doc.data() as Map<String, dynamic>;
                           final canDelete = user != null &&
-                              (c['authorId'] == user.id || isPostAuthor);
+                              (c['authorId'] == user.id || isPostAuthor || isAdmin);
                           final canEdit = user != null && c['authorId'] == user.id;
                           return _CommentCard(
                             commentId: doc.id,
                             postId: widget.docId,
                             postAuthorId: widget.post['authorId'] as String?,
+                            postTitle: widget.post['title'] ?? '게시글',
                             data: c,
                             canDelete: canDelete,
                             canEdit: canEdit,
@@ -565,6 +568,7 @@ class _CommentCard extends StatefulWidget {
   final String commentId;
   final String postId;
   final String? postAuthorId;
+  final String postTitle;
   final Map<String, dynamic> data;
   final bool canDelete;
   final bool canEdit;
@@ -574,6 +578,7 @@ class _CommentCard extends StatefulWidget {
     required this.commentId,
     required this.postId,
     this.postAuthorId,
+    required this.postTitle,
     required this.data,
     required this.canDelete,
     required this.canEdit,
@@ -609,6 +614,28 @@ class _CommentCardState extends State<_CommentCard> {
 
   void _onAuthChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _messageAuthor(String authorId, String? authorName, String? authorProfileImg) {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 후 쪽지를 보낼 수 있어요.')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          targetUserId: authorId,
+          targetNickname: authorName ?? '익명',
+          targetProfileImg: authorProfileImg,
+          contextId: widget.postId,
+          contextTitle: widget.postTitle,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadLikeStatus() async {
@@ -884,6 +911,21 @@ class _CommentCardState extends State<_CommentCard> {
                       child: const Icon(Icons.delete_outline, size: 14, color: Colors.grey),
                     ),
                   ],
+                  if (user != null && authorId != null && authorId.isNotEmpty && authorId != user.id)
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 16, color: Colors.grey),
+                      iconSize: 16,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onSelected: (val) {
+                        if (val == 'message') {
+                          _messageAuthor(authorId, c['authorName'] as String?, c['authorProfileImg'] as String?);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(value: 'message', child: Text('쪽지 보내기')),
+                      ],
+                    ),
                 ]),
                 const SizedBox(height: 6),
                 // 댓글 본문

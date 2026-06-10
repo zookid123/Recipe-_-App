@@ -2,7 +2,7 @@
 library;
 
 /// 관리자 이메일 (이 이메일로 로그인하면 관리자 권한 부여)
-const String kAdminEmail = 'cs075_c@ainuri.kr';
+const String kAdminEmail = 'kang834130@gmail.com';
 
 /// 공공 레시피 API 키
 const String kRecipeApiKey =
