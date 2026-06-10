@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import 'community_post_create_screen.dart';
 import 'user_profile_screen.dart';
+import 'chat_screen.dart';
 
 class CommunityPostDetailScreen extends StatefulWidget {
   final String docId;
@@ -36,6 +37,35 @@ class _CommunityPostDetailScreenState
   void dispose() {
     _commentCtrl.dispose();
     super.dispose();
+  }
+
+  void _startChat() {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 후 채팅할 수 있어요.')),
+      );
+      return;
+    }
+    if (user.id == widget.post['authorId']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('자신과는 채팅할 수 없어요.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          targetUserId: widget.post['authorId'],
+          targetNickname: widget.post['authorName'] ?? '익명',
+          targetProfileImg: widget.post['authorProfileImg'],
+          contextId: widget.docId,
+          contextTitle: widget.post['title'] ?? '게시글',
+        ),
+      ),
+    );
   }
 
   Future<void> _incrementViewCount() async {
@@ -121,6 +151,7 @@ class _CommunityPostDetailScreenState
         'authorId': user?.id,
         'authorName': user?.nickname ?? '익명',
         'authorProfileImg': user?.profileImageUrl,
+        'authorTitle': user?.selectedTitle,
         'likeCount': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -314,6 +345,21 @@ class _CommunityPostDetailScreenState
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black87),
                                       ),
+                                      if ((widget.post['authorTitle'] as String?) != null) ...[
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.shade50,
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.amber.shade300, width: 0.5),
+                                          ),
+                                          child: Text(
+                                            widget.post['authorTitle'] as String,
+                                            style: TextStyle(fontSize: 9, color: Colors.amber.shade700, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
                                       const SizedBox(width: 6),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -337,6 +383,23 @@ class _CommunityPostDetailScreenState
                             ]),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        // 채팅하기 버튼 추가
+                        if (user != null && user.id != widget.post['authorId'])
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _startChat,
+                              icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                              label: const Text('작성자와 채팅하기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.orange,
+                                side: const BorderSide(color: Colors.orange),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 16),
                         if (hasImg) ...[
                           ClipRRect(
@@ -534,12 +597,18 @@ class _CommentCardState extends State<_CommentCard> {
     super.initState();
     _likeCount = widget.data['likeCount'] ?? 0;
     _loadLikeStatus();
+    AuthService.instance.addListener(_onAuthChanged);
   }
 
   @override
   void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
     _replyCtrl.dispose();
     super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadLikeStatus() async {
@@ -769,6 +838,21 @@ class _CommentCardState extends State<_CommentCard> {
                             fontWeight: FontWeight.bold,
                             color: Colors.black87)),
                   ),
+                  if ((c['authorTitle'] as String?) != null) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.amber.shade300, width: 0.5),
+                      ),
+                      child: Text(
+                        c['authorTitle'] as String,
+                        style: TextStyle(fontSize: 9, color: Colors.amber.shade700, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                   if (authorId != null &&
                       authorId.isNotEmpty &&
                       authorId == widget.postAuthorId) ...[

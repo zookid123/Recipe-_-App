@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,7 +8,7 @@ import 'screens/community_screen.dart';
 import 'screens/my_page_screen.dart';
 import 'services/auth_service.dart';
 import 'services/comment_watcher.dart';
-import 'firebase_config.dart';
+import 'firebase_options.dart';
 
 // 마우스 드래그로도 가로 스크롤 가능하게 전역 설정
 class _AppScrollBehavior extends MaterialScrollBehavior {
@@ -31,7 +30,7 @@ void main() async {
   );
 
   await Firebase.initializeApp(
-    options: kIsWeb ? FirebaseConfig.web : FirebaseConfig.android,
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
   // 저장된 로그인 세션 복원
