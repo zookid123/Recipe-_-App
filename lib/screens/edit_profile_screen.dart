@@ -426,7 +426,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               child: Column(
                 children: [
-                  if (_selectedTitle != null) ...[
+                  if (user?.isAdmin == true) ...[
                     Row(
                       children: [
                         Container(
@@ -435,32 +435,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             gradient: const LinearGradient(colors: [Colors.orange, Color(0xFFFFAB40)]),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Text('⭐ $_selectedTitle', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                          child: const Text('⭐ 운영자', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                         ),
                         const Spacer(),
-                        TextButton(
-                          onPressed: () => setState(() => _selectedTitle = null),
-                          child: const Text('제거', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                        ),
+                        const Text('관리자 전용 칭호', style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                  ],
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: OutlinedButton(
-                      onPressed: _showTitlePicker,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.orange),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ] else ...[
+                    if (_selectedTitle != null) ...[
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Colors.orange, Color(0xFFFFAB40)]),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text('⭐ $_selectedTitle', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => setState(() => _selectedTitle = null),
+                            child: const Text('제거', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        _selectedTitle == null ? '칭호 선택하기' : '칭호 변경하기',
-                        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: _showTitlePicker,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.orange),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: Text(
+                          _selectedTitle == null ? '칭호 선택하기' : '칭호 변경하기',
+                          style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

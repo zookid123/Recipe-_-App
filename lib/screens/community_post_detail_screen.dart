@@ -151,7 +151,7 @@ class _CommunityPostDetailScreenState
         'authorId': user?.id,
         'authorName': user?.nickname ?? '익명',
         'authorProfileImg': user?.profileImageUrl,
-        'authorTitle': user?.selectedTitle,
+        'authorTitle': user?.displayTitle,
         'likeCount': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -543,6 +543,7 @@ class _CommunityPostDetailScreenState
 
   Color _categoryColor(String cat) {
     switch (cat) {
+      case '공지': return Colors.red;
       case 'Q&A': return Colors.blue;
       case '나눔': return Colors.green;
       default: return Colors.orange;

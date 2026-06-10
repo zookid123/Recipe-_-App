@@ -113,7 +113,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   ),
                   const SizedBox(height: 12),
                   // 칭호 (있을 경우만 표시)
-                  if (isLoggedIn && user.selectedTitle != null) ...[
+                  if (isLoggedIn && user.displayTitle != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -122,7 +122,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         border: Border.all(color: Colors.amber.withOpacity(0.5)),
                       ),
                       child: Text(
-                        '⭐ ${user.selectedTitle}',
+                        '⭐ ${user.displayTitle}',
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
