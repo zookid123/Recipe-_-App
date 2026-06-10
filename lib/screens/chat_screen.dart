@@ -76,6 +76,29 @@ class _ChatScreenState extends State<ChatScreen> {
     await batch.commit();
     _msgCtrl.clear();
     _scrollDown();
+
+    // 받는 사람에게 쪽지 알림
+    if (widget.targetUserId != user.id) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.targetUserId)
+            .collection('notifications')
+            .add({
+          'type': 'chat_message',
+          'title': '새 쪽지가 도착했어요 💌',
+          'body': '${user.nickname}님: ${text.length > 30 ? '${text.substring(0, 30)}...' : text}',
+          'isRead': false,
+          'targetId': roomId,
+          'senderId': user.id,
+          'senderName': user.nickname,
+          'senderProfileImg': user.profileImageUrl,
+          'contextId': widget.contextId,
+          'contextTitle': widget.contextTitle,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
   }
 
   void _scrollDown() {

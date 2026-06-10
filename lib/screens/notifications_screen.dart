@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import 'recipe_detail_screen.dart';
 import 'community_post_detail_screen.dart';
+import 'chat_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -221,6 +222,21 @@ class _NotifCard extends StatelessWidget {
         MaterialPageRoute(
             builder: (_) => RecipeDetailScreen(recipe: <String, dynamic>{...snap.data()!, 'id': snap.id})),
       );
+    } else if (type == 'chat_message') {
+      final senderId = data['senderId'] as String?;
+      if (senderId == null) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            targetUserId: senderId,
+            targetNickname: data['senderName'] as String? ?? '익명',
+            targetProfileImg: data['senderProfileImg'] as String?,
+            contextId: data['contextId'] as String? ?? '',
+            contextTitle: data['contextTitle'] as String? ?? '',
+          ),
+        ),
+      );
     } else if (type == 'community_comment' || type == 'community_reply' ||
                type == 'community_like') {
       final snap = await FirebaseFirestore.instance
@@ -261,6 +277,8 @@ class _NotifCard extends StatelessWidget {
       case 'recipe_like':
       case 'community_like':
         return Icons.favorite;
+      case 'chat_message':
+        return Icons.mail;
       default:
         return Icons.notifications;
     }
@@ -280,6 +298,8 @@ class _NotifCard extends StatelessWidget {
       case 'recipe_like':
       case 'community_like':
         return Colors.pink;
+      case 'chat_message':
+        return Colors.purple;
       default:
         return Colors.grey;
     }

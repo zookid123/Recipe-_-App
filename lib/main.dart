@@ -29,9 +29,7 @@ void main() async {
     javaScriptAppKey: "534df5ad8dfcab4206e7b8e101264f13",
   );
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // 저장된 로그인 세션 복원
   await AuthService.instance.init();

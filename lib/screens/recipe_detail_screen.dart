@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import 'recipe_create_screen.dart';
 import 'user_profile_screen.dart';
+import 'chat_screen.dart';
 
 import 'cooking_mode_screen.dart';
 
@@ -151,14 +152,14 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   .doc(_recipeAuthorId)
                   .collection('notifications')
                   .add({
-                'type': 'recipe_like',
-                'title': '내 레시피에 좋아요가 달렸어요 ❤️',
-                'body':
-                    '${user.nickname}님이 "${widget.recipe['name'] ?? '내 레시피'}"를 좋아합니다.',
-                'isRead': false,
-                'targetId': _docId,
-                'createdAt': FieldValue.serverTimestamp(),
-              });
+                    'type': 'recipe_like',
+                    'title': '내 레시피에 좋아요가 달렸어요 ❤️',
+                    'body':
+                        '${user.nickname}님이 "${widget.recipe['name'] ?? '내 레시피'}"를 좋아합니다.',
+                    'isRead': false,
+                    'targetId': _docId,
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
             } catch (_) {}
           }();
         }
@@ -245,14 +246,13 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             .doc(_recipeAuthorId)
             .collection('notifications')
             .add({
-          'type': 'trending',
-          'title': '내 레시피가 인기 순위에 올랐어요! 🔥',
-          'body':
-              '"${data['name'] ?? '내 레시피'}"이 오늘 인기 순위 $rank위에 올랐어요!',
-          'isRead': false,
-          'targetId': docSnap.id,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+              'type': 'trending',
+              'title': '내 레시피가 인기 순위에 올랐어요! 🔥',
+              'body': '"${data['name'] ?? '내 레시피'}"이 오늘 인기 순위 $rank위에 올랐어요!',
+              'isRead': false,
+              'targetId': docSnap.id,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
         await docSnap.reference.update({'lastTrendingNotifyDate': today});
       }
     }
@@ -367,7 +367,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         title: const Text('댓글 삭제'),
         content: const Text('이 댓글을 삭제하시겠습니까?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('삭제', style: TextStyle(color: Colors.red)),
@@ -378,15 +381,19 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     if (ok != true) return;
 
     await FirebaseFirestore.instance
-        .collection('recipes').doc(_docId)
-        .collection('comments').doc(commentId)
+        .collection('recipes')
+        .doc(_docId)
+        .collection('comments')
+        .doc(commentId)
         .delete();
 
     // 댓글 작성자의 활동 내역에서도 삭제
     if (commentUserId != null) {
       await FirebaseFirestore.instance
-          .collection('users').doc(commentUserId)
-          .collection('myComments').doc(commentId)
+          .collection('users')
+          .doc(commentUserId)
+          .collection('myComments')
+          .doc(commentId)
           .delete();
     }
   }
@@ -411,7 +418,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             'authorProfileImg': (!_isAnonymous && user != null)
                 ? user.profileImageUrl
                 : null,
-            'authorTitle': (!_isAnonymous && user != null) ? user.selectedTitle : null,
+            'authorTitle': (!_isAnonymous && user != null)
+                ? user.selectedTitle
+                : null,
             'rating': _selectedRating > 0 ? _selectedRating : null,
             'createdAt': FieldValue.serverTimestamp(),
           });
@@ -440,6 +449,37 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     }
 
     // 알림은 CommentWatcher가 자동으로 감지해서 처리
+  }
+
+  void _startChat() {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인 후 채팅할 수 있어요.')));
+      return;
+    }
+    final authorId = widget.recipe['authorId'] as String?;
+    if (authorId == null || authorId.isEmpty) return;
+    if (user.id == authorId) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('자신과는 채팅할 수 없어요.')));
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          targetUserId: authorId,
+          targetNickname: widget.recipe['authorName'] ?? '익명',
+          targetProfileImg: widget.recipe['authorProfileImg'],
+          contextId: _docId ?? widget.recipe['id'] ?? '',
+          contextTitle: widget.recipe['name'] ?? '레시피',
+        ),
+      ),
+    );
   }
 
   @override
@@ -617,6 +657,26 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                     textColor: Colors.green,
                   ),
                 ],
+                const Spacer(),
+                if (widget.recipe['source'] == 'ugc' &&
+                    AuthService.instance.isLoggedIn &&
+                    AuthService.instance.currentUser!.id !=
+                        widget.recipe['authorId'])
+                  GestureDetector(
+                    onTap: _startChat,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.send_rounded,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -636,64 +696,102 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 onTap: () {
                   final authorId = widget.recipe['authorId'] as String?;
                   if (authorId != null && authorId.isNotEmpty) {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => UserProfileScreen(userId: authorId),
-                    ));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => UserProfileScreen(userId: authorId),
+                      ),
+                    );
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF8F0),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 22,
                         backgroundColor: const Color(0xFFFFE0B2),
-                        backgroundImage: (widget.recipe['authorProfileImg'] as String?)?.isNotEmpty == true
-                            ? NetworkImage(widget.recipe['authorProfileImg'] as String)
+                        backgroundImage:
+                            (widget.recipe['authorProfileImg'] as String?)
+                                    ?.isNotEmpty ==
+                                true
+                            ? NetworkImage(
+                                widget.recipe['authorProfileImg'] as String,
+                              )
                             : null,
-                        child: (widget.recipe['authorProfileImg'] as String?)?.isNotEmpty == true
+                        child:
+                            (widget.recipe['authorProfileImg'] as String?)
+                                    ?.isNotEmpty ==
+                                true
                             ? null
-                            : const Icon(Icons.person, size: 22, color: Colors.orange),
+                            : const Icon(
+                                Icons.person,
+                                size: 22,
+                                color: Colors.orange,
+                              ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(children: [
-                              Text(
-                                widget.recipe['authorName'] ?? '',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                            Row(
+                              children: [
+                                Text(
+                                  widget.recipe['authorName'] ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  borderRadius: BorderRadius.circular(6),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    '작성자',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                                child: const Text('작성자',
-                                    style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                              ),
-                            ]),
+                              ],
+                            ),
                             const SizedBox(height: 3),
                             const Text(
                               '레시피 작성자 · 프로필 보기',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right, size: 20, color: Colors.orange),
+                      const Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.orange,
+                      ),
                     ],
                   ),
                 ),
@@ -845,7 +943,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                     ),
                   ),
               ],
@@ -1055,17 +1156,18 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   final commentUserId = data['userId'] as String?;
                   final currentUser = AuthService.instance.currentUser;
 
-                  final canDelete = currentUser != null && (
-                    commentUserId == currentUser.id ||
-                    widget.recipe['authorId'] == currentUser.id
-                  );
-                  final canEdit = currentUser != null &&
-                      commentUserId == currentUser.id;
+                  final canDelete =
+                      currentUser != null &&
+                      (commentUserId == currentUser.id ||
+                          widget.recipe['authorId'] == currentUser.id);
+                  final canEdit =
+                      currentUser != null && commentUserId == currentUser.id;
 
                   return _RecipeCommentCard(
                     commentId: commentId,
                     recipeId: _docId!,
                     recipeAuthorId: _recipeAuthorId,
+                    recipeName: widget.recipe['name'] ?? '레시피',
                     data: data,
                     canDelete: canDelete,
                     canEdit: canEdit,
@@ -1261,7 +1363,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     ),
   );
 
-  Widget _metaCol(IconData icon, String label, String value, {Color? iconColor}) => SizedBox(
+  Widget _metaCol(
+    IconData icon,
+    String label,
+    String value, {
+    Color? iconColor,
+  }) => SizedBox(
     width: 64,
     child: Column(
       children: [
@@ -1307,7 +1414,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       ],
     ),
   );
-
 }
 
 // ── 레시피 댓글 카드 (좋아요 + 답글) ────────────────────
@@ -1315,6 +1421,7 @@ class _RecipeCommentCard extends StatefulWidget {
   final String commentId;
   final String recipeId;
   final String? recipeAuthorId;
+  final String recipeName;
   final Map<String, dynamic> data;
   final bool canDelete;
   final bool canEdit;
@@ -1324,6 +1431,7 @@ class _RecipeCommentCard extends StatefulWidget {
     required this.commentId,
     required this.recipeId,
     this.recipeAuthorId,
+    required this.recipeName,
     required this.data,
     required this.canDelete,
     required this.canEdit,
@@ -1357,6 +1465,32 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
     if (mounted) setState(() {});
   }
 
+  void _messageAuthor(
+    String authorId,
+    String? authorName,
+    String? authorProfileImg,
+  ) {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인 후 쪽지를 보낼 수 있어요.')));
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          targetUserId: authorId,
+          targetNickname: authorName ?? '익명',
+          targetProfileImg: authorProfileImg,
+          contextId: widget.recipeId,
+          contextTitle: widget.recipeName,
+        ),
+      ),
+    );
+  }
+
   Future<void> _editComment() async {
     final ctrl = TextEditingController(text: widget.data['text'] ?? '');
     final saved = await showDialog<String>(
@@ -1372,27 +1506,34 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
             filled: true,
             fillColor: const Color(0xFFF5F5F5),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
           ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('취소', style: TextStyle(color: Colors.grey))),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: const Text('저장', style: TextStyle(color: Colors.orange))),
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('저장', style: TextStyle(color: Colors.orange)),
+          ),
         ],
       ),
     );
     ctrl.dispose();
     if (saved == null || saved.isEmpty) return;
     await FirebaseFirestore.instance
-        .collection('recipes').doc(widget.recipeId)
-        .collection('comments').doc(widget.commentId)
+        .collection('recipes')
+        .doc(widget.recipeId)
+        .collection('comments')
+        .doc(widget.commentId)
         .update({'text': saved});
   }
 
@@ -1403,21 +1544,30 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
     setState(() => _submittingReply = true);
     try {
       await FirebaseFirestore.instance
-          .collection('recipes').doc(widget.recipeId)
-          .collection('comments').doc(widget.commentId)
-          .collection('replies').add({
-        'text': text,
-        'authorId': user?.id,
-        'authorName': user?.nickname ?? '익명',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+          .collection('recipes')
+          .doc(widget.recipeId)
+          .collection('comments')
+          .doc(widget.commentId)
+          .collection('replies')
+          .add({
+            'text': text,
+            'authorId': user?.id,
+            'authorName': user?.nickname ?? '익명',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
       await FirebaseFirestore.instance
-          .collection('recipes').doc(widget.recipeId)
-          .collection('comments').doc(widget.commentId)
+          .collection('recipes')
+          .doc(widget.recipeId)
+          .collection('comments')
+          .doc(widget.commentId)
           .update({'replyCount': FieldValue.increment(1)});
 
       _replyCtrl.clear();
-      if (mounted) setState(() { _showReplyInput = false; _showReplies = true; });
+      if (mounted)
+        setState(() {
+          _showReplyInput = false;
+          _showReplies = true;
+        });
     } finally {
       if (mounted) setState(() => _submittingReply = false);
     }
@@ -1437,13 +1587,13 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
           .doc(commentAuthorId)
           .collection('notifications')
           .add({
-        'type': 'recipe_reply',
-        'title': '내 댓글에 답글이 달렸어요 💬',
-        'body': '${user?.nickname ?? '누군가'}님이 회원님의 댓글에 답글을 남겼어요.',
-        'isRead': false,
-        'targetId': widget.recipeId,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+            'type': 'recipe_reply',
+            'title': '내 댓글에 답글이 달렸어요 💬',
+            'body': '${user?.nickname ?? '누군가'}님이 회원님의 댓글에 답글을 남겼어요.',
+            'isRead': false,
+            'targetId': widget.recipeId,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
     } catch (e) {
       debugPrint('[알림 오류] 레시피 답글 알림 실패: $e');
     }
@@ -1451,12 +1601,18 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
 
   Future<void> _deleteReply(String replyId) async {
     await FirebaseFirestore.instance
-        .collection('recipes').doc(widget.recipeId)
-        .collection('comments').doc(widget.commentId)
-        .collection('replies').doc(replyId).delete();
+        .collection('recipes')
+        .doc(widget.recipeId)
+        .collection('comments')
+        .doc(widget.commentId)
+        .collection('replies')
+        .doc(replyId)
+        .delete();
     await FirebaseFirestore.instance
-        .collection('recipes').doc(widget.recipeId)
-        .collection('comments').doc(widget.commentId)
+        .collection('recipes')
+        .doc(widget.recipeId)
+        .collection('comments')
+        .doc(widget.commentId)
         .update({'replyCount': FieldValue.increment(-1)});
   }
 
@@ -1475,28 +1631,36 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
             filled: true,
             fillColor: const Color(0xFFF5F5F5),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
           ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('취소', style: TextStyle(color: Colors.grey))),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: const Text('저장', style: TextStyle(color: Colors.orange))),
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('저장', style: TextStyle(color: Colors.orange)),
+          ),
         ],
       ),
     );
     ctrl.dispose();
     if (saved == null || saved.isEmpty) return;
     await FirebaseFirestore.instance
-        .collection('recipes').doc(widget.recipeId)
-        .collection('comments').doc(widget.commentId)
-        .collection('replies').doc(replyId)
+        .collection('recipes')
+        .doc(widget.recipeId)
+        .collection('comments')
+        .doc(widget.commentId)
+        .collection('replies')
+        .doc(replyId)
         .update({'text': saved});
   }
 
@@ -1511,8 +1675,10 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
     final userId = d['userId'] as String?;
     void goToProfile() {
       if (userId != null && userId.isNotEmpty) {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => UserProfileScreen(userId: userId)));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => UserProfileScreen(userId: userId)),
+        );
       }
     }
 
@@ -1533,7 +1699,8 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
             child: CircleAvatar(
               radius: 15,
               backgroundColor: const Color(0xFFFFE0B2),
-              backgroundImage: (d['authorProfileImg'] as String?)?.isNotEmpty == true
+              backgroundImage:
+                  (d['authorProfileImg'] as String?)?.isNotEmpty == true
                   ? NetworkImage(d['authorProfileImg'] as String)
                   : null,
               child: (d['authorProfileImg'] as String?)?.isNotEmpty == true
@@ -1548,151 +1715,260 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 닉네임 + 별점 + 시간 + 수정/삭제
-                Row(children: [
-                  GestureDetector(
-                    onTap: goToProfile,
-                    child: Text(
-                      d['author'] ?? '익명',
-                      style: const TextStyle(
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: goToProfile,
+                      child: Text(
+                        d['author'] ?? '익명',
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87),
-                    ),
-                  ),
-                  if ((d['authorTitle'] as String?) != null) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.amber.shade300, width: 0.5),
-                      ),
-                      child: Text(
-                        d['authorTitle'] as String,
-                        style: TextStyle(fontSize: 9, color: Colors.amber.shade700, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                  if (userId != null &&
-                      userId.isNotEmpty &&
-                      userId == widget.recipeAuthorId) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text('작성자',
-                          style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                  if (rating != null && rating > 0) ...[
-                    const SizedBox(width: 6),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(5, (i) => Icon(
-                        i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                        size: 13, color: Colors.amber,
-                      )),
-                    ),
-                  ],
-                  const Spacer(),
-                  Text(
-                    ts != null ? _formatDate(ts.toDate()) : '',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                  if (widget.canEdit) ...[
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: _editComment,
-                      child: const Icon(Icons.edit_outlined, size: 14, color: Colors.grey),
-                    ),
-                  ],
-                  if (widget.canDelete) ...[
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: widget.onDelete,
-                      child: const Icon(Icons.delete_outline, size: 14, color: Colors.grey),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 6),
-                // 댓글 본문
-                Text(d['text'] ?? '',
-                    style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
-                const SizedBox(height: 8),
-                // 좋아요 + 답글 버튼
-                Row(children: [
-                  _RecipeCommentLike(
-                    commentId: widget.commentId,
-                    recipeId: widget.recipeId,
-                    initialCount: d['likeCount'] ?? 0,
-                  ),
-                  const SizedBox(width: 14),
-                  if (user != null)
-                    GestureDetector(
-                      onTap: () => setState(() => _showReplyInput = !_showReplyInput),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.reply, size: 14,
-                            color: _showReplyInput ? Colors.orange : Colors.grey),
-                        const SizedBox(width: 3),
-                        Text('답글',
-                            style: TextStyle(fontSize: 12,
-                                color: _showReplyInput ? Colors.orange : Colors.grey)),
-                      ]),
-                    ),
-                  if (replyCount > 0) ...[
-                    const SizedBox(width: 14),
-                    GestureDetector(
-                      onTap: () => setState(() => _showReplies = !_showReplies),
-                      child: Text(
-                        _showReplies ? '답글 숨기기' : '답글 $replyCount개 보기',
-                        style: const TextStyle(fontSize: 12, color: Colors.orange),
-                      ),
-                    ),
-                  ],
-                ]),
-                // 답글 입력창
-                if (_showReplyInput) ...[
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _replyCtrl,
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          hintText: '답글을 입력하세요',
-                          hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
-                          filled: true,
-                          fillColor: const Color(0xFFF0F0F0),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          color: Colors.black87,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    _submittingReply
-                        ? const SizedBox(width: 24, height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
-                        : IconButton(
-                            onPressed: _submitReply,
-                            icon: const Icon(Icons.send, size: 18),
-                            color: Colors.orange,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                    if ((d['authorTitle'] as String?) != null) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Colors.amber.shade300,
+                            width: 0.5,
                           ),
-                  ]),
+                        ),
+                        child: Text(
+                          d['authorTitle'] as String,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.amber.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (userId != null &&
+                        userId.isNotEmpty &&
+                        userId == widget.recipeAuthorId) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          '작성자',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (rating != null && rating > 0) ...[
+                      const SizedBox(width: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(
+                          5,
+                          (i) => Icon(
+                            i < rating
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            size: 13,
+                            color: Colors.amber,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    Text(
+                      ts != null ? _formatDate(ts.toDate()) : '',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    if (widget.canEdit) ...[
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: _editComment,
+                        child: const Icon(
+                          Icons.edit_outlined,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                    if (widget.canDelete) ...[
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: widget.onDelete,
+                        child: const Icon(
+                          Icons.delete_outline,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                    if (user != null &&
+                        userId != null &&
+                        userId.isNotEmpty &&
+                        userId != user.id)
+                      PopupMenuButton<String>(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        iconSize: 16,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onSelected: (val) {
+                          if (val == 'message') {
+                            _messageAuthor(
+                              userId,
+                              d['author'] as String?,
+                              d['authorProfileImg'] as String?,
+                            );
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(
+                            value: 'message',
+                            child: Text('쪽지 보내기'),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // 댓글 본문
+                Text(
+                  d['text'] ?? '',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // 좋아요 + 답글 버튼
+                Row(
+                  children: [
+                    _RecipeCommentLike(
+                      commentId: widget.commentId,
+                      recipeId: widget.recipeId,
+                      initialCount: d['likeCount'] ?? 0,
+                    ),
+                    const SizedBox(width: 14),
+                    if (user != null)
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _showReplyInput = !_showReplyInput),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.reply,
+                              size: 14,
+                              color: _showReplyInput
+                                  ? Colors.orange
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              '답글',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _showReplyInput
+                                    ? Colors.orange
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (replyCount > 0) ...[
+                      const SizedBox(width: 14),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _showReplies = !_showReplies),
+                        child: Text(
+                          _showReplies ? '답글 숨기기' : '답글 $replyCount개 보기',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                // 답글 입력창
+                if (_showReplyInput) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _replyCtrl,
+                          autofocus: true,
+                          decoration: InputDecoration(
+                            hintText: '답글을 입력하세요',
+                            hintStyle: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF0F0F0),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      _submittingReply
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.orange,
+                              ),
+                            )
+                          : IconButton(
+                              onPressed: _submitReply,
+                              icon: const Icon(Icons.send, size: 18),
+                              color: Colors.orange,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                    ],
+                  ),
                 ],
                 // 답글 목록
                 if (_showReplies)
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('recipes').doc(widget.recipeId)
-                        .collection('comments').doc(widget.commentId)
+                        .collection('recipes')
+                        .doc(widget.recipeId)
+                        .collection('comments')
+                        .doc(widget.commentId)
                         .collection('replies')
                         .orderBy('createdAt')
                         .snapshots(),
@@ -1701,9 +1977,11 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
                       return Column(
                         children: snap.data!.docs.map((doc) {
                           final r = doc.data() as Map<String, dynamic>;
-                          final canDelete = user != null &&
+                          final canDelete =
+                              user != null &&
                               (r['authorId'] == user.id || widget.canDelete);
-                          final canEdit = user != null && r['authorId'] == user.id;
+                          final canEdit =
+                              user != null && r['authorId'] == user.id;
                           return _RecipeReplyCard(
                             data: r,
                             canDelete: canDelete,
@@ -1757,49 +2035,61 @@ class _RecipeReplyCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF0F0F0),
         borderRadius: BorderRadius.circular(10),
-        border: const Border(
-            left: BorderSide(color: Colors.orange, width: 2)),
+        border: const Border(left: BorderSide(color: Colors.orange, width: 2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.subdirectory_arrow_right,
-              size: 14, color: Colors.grey),
+          const Icon(
+            Icons.subdirectory_arrow_right,
+            size: 14,
+            color: Colors.grey,
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Text(data['authorName'] ?? '익명',
+                Row(
+                  children: [
+                    Text(
+                      data['authorName'] ?? '익명',
                       style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  Text(
-                    ts != null ? _formatDate(ts.toDate()) : '',
-                    style:
-                        const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                  if (canEdit) ...[
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: onEdit,
-                      child: const Icon(Icons.edit_outlined,
-                          size: 14, color: Colors.grey),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ],
-                  if (canDelete) ...[
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: onDelete,
-                      child: const Icon(Icons.delete_outline,
-                          size: 14, color: Colors.grey),
+                    const Spacer(),
+                    Text(
+                      ts != null ? _formatDate(ts.toDate()) : '',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
                     ),
+                    if (canEdit) ...[
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: onEdit,
+                        child: const Icon(
+                          Icons.edit_outlined,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                    if (canDelete) ...[
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: onDelete,
+                        child: const Icon(
+                          Icons.delete_outline,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ],
-                ]),
+                ),
                 const SizedBox(height: 4),
-                Text(data['text'] ?? '',
-                    style: const TextStyle(fontSize: 13)),
+                Text(data['text'] ?? '', style: const TextStyle(fontSize: 13)),
               ],
             ),
           ),
@@ -1847,8 +2137,10 @@ class _RecipeCommentLikeState extends State<_RecipeCommentLike> {
     final user = AuthService.instance.currentUser;
     if (user == null) return;
     final doc = await FirebaseFirestore.instance
-        .collection('users').doc(user.id)
-        .collection('commentLikes').doc(widget.commentId)
+        .collection('users')
+        .doc(user.id)
+        .collection('commentLikes')
+        .doc(widget.commentId)
         .get();
     if (mounted) setState(() => _isLiked = doc.exists);
   }
@@ -1856,28 +2148,39 @@ class _RecipeCommentLikeState extends State<_RecipeCommentLike> {
   Future<void> _toggle() async {
     final user = AuthService.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 후 좋아요를 누를 수 있어요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('로그인 후 좋아요를 누를 수 있어요.')));
       return;
     }
     final newVal = !_isLiked;
-    setState(() { _isLiked = newVal; _count += newVal ? 1 : -1; });
+    setState(() {
+      _isLiked = newVal;
+      _count += newVal ? 1 : -1;
+    });
     try {
       final likeRef = FirebaseFirestore.instance
-          .collection('users').doc(user.id)
-          .collection('commentLikes').doc(widget.commentId);
+          .collection('users')
+          .doc(user.id)
+          .collection('commentLikes')
+          .doc(widget.commentId);
       if (newVal) {
         await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
       } else {
         await likeRef.delete();
       }
       await FirebaseFirestore.instance
-          .collection('recipes').doc(widget.recipeId)
-          .collection('comments').doc(widget.commentId)
+          .collection('recipes')
+          .doc(widget.recipeId)
+          .collection('comments')
+          .doc(widget.commentId)
           .update({'likeCount': FieldValue.increment(newVal ? 1 : -1)});
     } catch (e) {
-      if (mounted) setState(() { _isLiked = !newVal; _count += newVal ? -1 : 1; });
+      if (mounted)
+        setState(() {
+          _isLiked = !newVal;
+          _count += newVal ? -1 : 1;
+        });
     }
   }
 
@@ -1885,18 +2188,24 @@ class _RecipeCommentLikeState extends State<_RecipeCommentLike> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _toggle,
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(
-          _isLiked ? Icons.favorite : Icons.favorite_border,
-          size: 14,
-          color: _isLiked ? Colors.red : Colors.grey,
-        ),
-        const SizedBox(width: 4),
-        Text('$_count',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _isLiked ? Icons.favorite : Icons.favorite_border,
+            size: 14,
+            color: _isLiked ? Colors.red : Colors.grey,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$_count',
             style: TextStyle(
-                fontSize: 12,
-                color: _isLiked ? Colors.red : Colors.grey)),
-      ]),
+              fontSize: 12,
+              color: _isLiked ? Colors.red : Colors.grey,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
