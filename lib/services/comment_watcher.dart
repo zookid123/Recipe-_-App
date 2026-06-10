@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
 /// 내 레시피/게시글에 새 댓글이 달리면 알림함에 저장하는 감지 서비스.
@@ -16,6 +17,13 @@ class CommentWatcher {
     stop();
     _watchRecipeComments(user.id);
     _watchCommunityComments(user.id);
+    _checkFridgeExpiry(user.id);
+  }
+
+  // ── 알림 설정(SharedPreferences) 확인 ─────────────────────
+  Future<bool> _isEnabled(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(key) ?? true;
   }
 
   void stop() {
@@ -49,11 +57,12 @@ class CommentWatcher {
             .doc(recipeId)
             .collection('comments')
             .snapshots()
-            .listen((commentSnap) {
+            .listen((commentSnap) async {
           if (isFirst) {
             isFirst = false;
             return;
           }
+          if (!await _isEnabled('notify_community')) return;
           for (final c in commentSnap.docChanges) {
             if (c.type != DocumentChangeType.added) continue;
             final data = c.doc.data();
@@ -96,11 +105,12 @@ class CommentWatcher {
             .doc(postId)
             .collection('comments')
             .snapshots()
-            .listen((commentSnap) {
+            .listen((commentSnap) async {
           if (isFirst) {
             isFirst = false;
             return;
           }
+          if (!await _isEnabled('notify_community')) return;
           for (final c in commentSnap.docChanges) {
             if (c.type != DocumentChangeType.added) continue;
             final data = c.doc.data();
@@ -118,6 +128,46 @@ class CommentWatcher {
       }
     });
     _subs.add(postSub);
+  }
+
+  // ── 냉장고 유통기한 임박/만료 알림 ─────────────────────────
+  Future<void> _checkFridgeExpiry(String userId) async {
+    if (!await _isEnabled('notify_fridge')) return;
+
+    final db = FirebaseFirestore.instance;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    final snap = await db.collection('users').doc(userId).collection('fridge').get();
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final expStr = data['expiryDate'] as String?;
+      if (expStr == null || expStr.isEmpty) continue;
+      final exp = DateTime.tryParse(expStr);
+      if (exp == null) continue;
+
+      final diff = exp.difference(today).inDays;
+      if (diff > 3) continue; // 아직 여유 있음
+      if (data['expiryNotifiedDate'] == todayStr) continue; // 오늘 이미 알림 보냄
+
+      final name = data['name'] as String? ?? '재료';
+      final body = diff < 0
+          ? '$name의 유통기한이 ${-diff}일 지났어요.'
+          : diff == 0
+              ? '$name의 유통기한이 오늘까지예요!'
+              : '$name의 유통기한이 $diff일 남았어요.';
+
+      await _save(
+        userId: userId,
+        type: 'fridge_expiry',
+        title: '유통기한 임박 알림 ⏰',
+        body: body,
+        targetId: doc.id,
+      );
+      await doc.reference.update({'expiryNotifiedDate': todayStr});
+    }
   }
 
   // ── 알림 저장 ────────────────────────────────────────────
