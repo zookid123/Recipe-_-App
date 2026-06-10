@@ -32,6 +32,12 @@ class AppUser {
     this.selectedTitle,
   });
 
+  /// 관리자(루트) 계정 여부
+  bool get isAdmin => email != null && email == kAdminEmail;
+
+  /// 화면에 표시할 칭호. 관리자 계정은 항상 '운영자'로 표시됨.
+  String? get displayTitle => isAdmin ? '운영자' : selectedTitle;
+
   AppUser copyWith({
     String? nickname,
     String? profileImageUrl,
@@ -203,6 +209,21 @@ class AuthService extends ChangeNotifier {
   /// 업적 진행도 조회를 위한 집계 쿼리
   Future<UserProgress> fetchUserProgress() async {
     if (_currentUser == null) return const UserProgress();
+
+    // 관리자(루트) 계정은 모든 업적을 달성한 것으로 표시
+    if (_currentUser!.isAdmin) {
+      return const UserProgress(
+        recipeViews: 300,
+        bookmarks: 100,
+        comments: 50,
+        communityPosts: 30,
+        createdRecipes: 20,
+        nations: 7,
+        fridgeSearches: 50,
+        earlyBird: true,
+      );
+    }
+
     final id = _currentUser!.id;
     final db = FirebaseFirestore.instance;
 

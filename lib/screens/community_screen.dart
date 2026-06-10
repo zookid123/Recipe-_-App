@@ -15,7 +15,7 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> {
   String _selectedCategory = '전체';
-  static const _categories = ['전체', '자유', 'Q&A', '나눔'];
+  static const _categories = ['전체', '공지', '자유', 'Q&A', '나눔'];
 
   void _goToCreate() {
     if (!AuthService.instance.isLoggedIn) {
@@ -121,6 +121,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     final data = d.data() as Map<String, dynamic>;
                     return data['category'] == _selectedCategory;
                   }).toList();
+                } else {
+                  // 공지는 항상 최상단에 고정
+                  final notices = docs.where((d) =>
+                      (d.data() as Map<String, dynamic>)['category'] == '공지').toList();
+                  final others = docs.where((d) =>
+                      (d.data() as Map<String, dynamic>)['category'] != '공지').toList();
+                  docs = [...notices, ...others];
                 }
 
                 if (docs.isEmpty) {
@@ -184,8 +191,11 @@ class _PostCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: category == '공지' ? const Color(0xFFFFF5F5) : Colors.white,
           borderRadius: BorderRadius.circular(14),
+          border: category == '공지'
+              ? Border.all(color: Colors.red.withOpacity(0.2))
+              : null,
           boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6)],
         ),
         child: Row(
@@ -202,11 +212,20 @@ class _PostCard extends StatelessWidget {
                         color: _categoryColor(category).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(category,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: _categoryColor(category),
-                              fontWeight: FontWeight.bold)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (category == '공지') ...[
+                            Icon(Icons.push_pin, size: 11, color: _categoryColor(category)),
+                            const SizedBox(width: 3),
+                          ],
+                          Text(category,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: _categoryColor(category),
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
@@ -289,6 +308,7 @@ class _PostCard extends StatelessWidget {
 
   Color _categoryColor(String cat) {
     switch (cat) {
+      case '공지': return Colors.red;
       case 'Q&A': return Colors.blue;
       case '나눔': return Colors.green;
       default: return Colors.orange;

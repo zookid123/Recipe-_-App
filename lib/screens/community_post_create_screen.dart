@@ -24,7 +24,12 @@ class _CommunityPostCreateScreenState
   String? _existingImageUrl;
   bool _saving = false;
 
-  static const _categories = ['자유', 'Q&A', '나눔'];
+  List<String> get _categories => [
+        if (AuthService.instance.isAdmin) '공지',
+        '자유',
+        'Q&A',
+        '나눔',
+      ];
 
   @override
   void initState() {
@@ -103,7 +108,7 @@ class _CommunityPostCreateScreenState
         'authorId': user.id,
         'authorName': user.nickname,
         'authorProfileImg': user.profileImageUrl ?? '',
-        'authorTitle': user.selectedTitle,
+        'authorTitle': user.displayTitle,
       };
 
       if (widget.docId != null) {
@@ -175,6 +180,7 @@ class _CommunityPostCreateScreenState
               child: Row(
                 children: _categories.map((cat) {
                   final selected = _category == cat;
+                  final selectedColor = cat == '공지' ? Colors.red : Colors.orange;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: GestureDetector(
@@ -183,7 +189,7 @@ class _CommunityPostCreateScreenState
                         duration: const Duration(milliseconds: 150),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: selected ? Colors.orange : Colors.grey.shade100,
+                          color: selected ? selectedColor : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(cat,

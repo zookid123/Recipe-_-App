@@ -419,7 +419,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 ? user.profileImageUrl
                 : null,
             'authorTitle': (!_isAnonymous && user != null)
-                ? user.selectedTitle
+                ? user.displayTitle
                 : null,
             'rating': _selectedRating > 0 ? _selectedRating : null,
             'createdAt': FieldValue.serverTimestamp(),
