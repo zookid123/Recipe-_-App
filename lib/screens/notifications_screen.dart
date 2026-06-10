@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import 'recipe_detail_screen.dart';
 import 'community_post_detail_screen.dart';
 import 'chat_screen.dart';
+import 'fridge_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -222,6 +223,11 @@ class _NotifCard extends StatelessWidget {
         MaterialPageRoute(
             builder: (_) => RecipeDetailScreen(recipe: <String, dynamic>{...snap.data()!, 'id': snap.id})),
       );
+    } else if (type == 'fridge_expiry') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const FridgeScreen()),
+      );
     } else if (type == 'chat_message') {
       final senderId = data['senderId'] as String?;
       if (senderId == null) return;
@@ -279,6 +285,8 @@ class _NotifCard extends StatelessWidget {
         return Icons.favorite;
       case 'chat_message':
         return Icons.mail;
+      case 'fridge_expiry':
+        return Icons.kitchen;
       default:
         return Icons.notifications;
     }
@@ -300,6 +308,8 @@ class _NotifCard extends StatelessWidget {
         return Colors.pink;
       case 'chat_message':
         return Colors.purple;
+      case 'fridge_expiry':
+        return Colors.brown;
       default:
         return Colors.grey;
     }
