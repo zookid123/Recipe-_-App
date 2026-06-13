@@ -30,9 +30,12 @@ style: |
   section.scr table { width: 56% !important; table-layout: auto !important; }
   section.scr ul { width: 56%; padding-left: 0; list-style-position: inside; }
   section.scr pre { width: 55%; }
+  section.title { padding-top: 35px; }
+  section.title h2 { position: static; }
 ---
 
 <!-- _paginate: false -->
+<!-- _class: title -->
 # 🥦 냉장고 구조대
 
 ## 남은 재료로 만드는 맛있는 한 끼
