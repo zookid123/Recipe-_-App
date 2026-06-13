@@ -126,6 +126,7 @@ class _IngredientSearchScreenState extends State<IngredientSearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text('냉장고 재료로 찾기',
             style: TextStyle(fontWeight: FontWeight.bold)),

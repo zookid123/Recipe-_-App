@@ -176,8 +176,6 @@ class _FridgeScreenState extends State<FridgeScreen> {
         ),
       ),
     );
-    nameCtrl.dispose();
-    qtyCtrl.dispose();
   }
 
   // ── 재료 추가 저장 ──────────────────────────────────
