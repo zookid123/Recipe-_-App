@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'screens/home_screen.dart';
@@ -33,6 +34,12 @@ void main() async {
 
   // 저장된 로그인 세션 복원
   await AuthService.instance.init();
+
+  // 하단 네비게이션 바(뒤로가기/홈) 숨기기 — 상태 표시줄은 유지
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: [SystemUiOverlay.top],
+  );
 
   runApp(
     MaterialApp(

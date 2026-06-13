@@ -77,9 +77,11 @@ Firestore `recipes` 컬렉션
 | `yesterdayViewCount` | Number | 전일 조회수 |
 | `todayDate` | String | 오늘 날짜 (`YYYY-MM-DD`) |
 
-### 인증 관련 미완료 사항 (2026-04-15 기준)
+### 인증 관련 미완료 사항 (2026-06-13 기준)
 
-1. Firebase Console → Authentication → Google 로그인 활성화 (진행 중)
+1. ~~Firebase Console → Authentication → Google 로그인 활성화~~ — 완료. Android 앱(`com.example.sg_recipes`)에 디버그 키스토어 SHA-1(`81:6A:48:A3:0A:56:1E:CA:4B:76:C1:46:0A:92:C8:BF:8C:06:60:DB`) 등록 후 정상 동작 확인.
+   - 참고: 웹(Chrome)은 Firebase 웹 OAuth 클라이언트(도메인 기반)로 동작해 SHA-1이 필요 없었음. 안드로이드 네이티브 `google_sign_in`은 앱 서명 인증서(SHA-1) 검증이 필요해 별도 등록이 필요했음.
+   - 릴리스 빌드 배포 시에는 릴리스 키스토어 SHA-1도 추가 등록 필요.
 2. 카카오 Developers → 앱 등록, 패키지명(`com.example.flutter_application_1`) + 키 해시 등록 (진행 중)
 3. `lib/main.dart`의 카카오 네이티브 앱 키 적용 완료.
 

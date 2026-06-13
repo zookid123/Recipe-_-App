@@ -499,42 +499,45 @@ class _CommunityPostDetailScreenState
             ),
           ),
           // 댓글 입력창
-          Container(
-            padding: EdgeInsets.only(
-              left: 16, right: 16, top: 10,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 10,
-            ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              boxShadow: [BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, -2))],
-            ),
-            child: Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _commentCtrl,
-                  decoration: InputDecoration(
-                    hintText: user != null ? '댓글을 입력하세요' : '로그인 후 댓글 작성 가능',
-                    hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-                    filled: true,
-                    fillColor: const Color(0xFFF5F5F5),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  ),
-                  enabled: user != null,
-                ),
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: EdgeInsets.only(
+                left: 16, right: 16, top: 10,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 10,
               ),
-              const SizedBox(width: 8),
-              _submitting
-                  ? const SizedBox(width: 36, height: 36,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
-                  : IconButton(
-                      onPressed: user != null ? _submitComment : null,
-                      icon: const Icon(Icons.send),
-                      color: Colors.orange,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                boxShadow: [BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, -2))],
+              ),
+              child: Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentCtrl,
+                    decoration: InputDecoration(
+                      hintText: user != null ? '댓글을 입력하세요' : '로그인 후 댓글 작성 가능',
+                      hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                      filled: true,
+                      fillColor: const Color(0xFFF5F5F5),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
-            ]),
+                    enabled: user != null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _submitting
+                    ? const SizedBox(width: 36, height: 36,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
+                    : IconButton(
+                        onPressed: user != null ? _submitComment : null,
+                        icon: const Icon(Icons.send),
+                        color: Colors.orange,
+                      ),
+              ]),
+            ),
           ),
         ],
       ),
@@ -898,35 +901,49 @@ class _CommentCardState extends State<_CommentCard> {
                   const Spacer(),
                   Text(_formatDate(c['createdAt']),
                       style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  if (widget.canEdit) ...[
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: _editComment,
-                      child: const Icon(Icons.edit_outlined, size: 14, color: Colors.grey),
-                    ),
-                  ],
-                  if (widget.canDelete) ...[
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: widget.onDelete,
-                      child: const Icon(Icons.delete_outline, size: 14, color: Colors.grey),
-                    ),
-                  ],
-                  if (user != null && authorId != null && authorId.isNotEmpty && authorId != user.id)
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, size: 16, color: Colors.grey),
-                      iconSize: 16,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onSelected: (val) {
-                        if (val == 'message') {
-                          _messageAuthor(authorId, c['authorName'] as String?, c['authorProfileImg'] as String?);
-                        }
-                      },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: 'message', child: Text('쪽지 보내기')),
-                      ],
-                    ),
+                  SizedBox(
+                    width: 20,
+                    child: widget.canEdit
+                        ? Center(
+                            child: GestureDetector(
+                              onTap: _editComment,
+                              child: const Icon(Icons.edit_outlined, size: 14, color: Colors.grey),
+                            ),
+                          )
+                        : null,
+                  ),
+                  SizedBox(
+                    width: 20,
+                    child: widget.canDelete
+                        ? Center(
+                            child: GestureDetector(
+                              onTap: widget.onDelete,
+                              child: const Icon(Icons.delete_outline, size: 14, color: Colors.grey),
+                            ),
+                          )
+                        : null,
+                  ),
+                  SizedBox(
+                    width: 20,
+                    child: (user != null && authorId != null && authorId.isNotEmpty && authorId != user.id)
+                        ? Center(
+                            child: PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert, size: 16, color: Colors.grey),
+                              iconSize: 16,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onSelected: (val) {
+                                if (val == 'message') {
+                                  _messageAuthor(authorId, c['authorName'] as String?, c['authorProfileImg'] as String?);
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(value: 'message', child: Text('쪽지 보내기')),
+                              ],
+                            ),
+                          )
+                        : null,
+                  ),
                 ]),
                 const SizedBox(height: 6),
                 // 댓글 본문
@@ -1098,22 +1115,30 @@ class _ReplyCard extends StatelessWidget {
                   Text(_formatDate(data['createdAt']),
                       style: const TextStyle(
                           fontSize: 11, color: Colors.grey)),
-                  if (canEdit) ...[
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: onEdit,
-                      child: const Icon(Icons.edit_outlined,
-                          size: 14, color: Colors.grey),
-                    ),
-                  ],
-                  if (canDelete) ...[
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: onDelete,
-                      child: const Icon(Icons.delete_outline,
-                          size: 14, color: Colors.grey),
-                    ),
-                  ],
+                  SizedBox(
+                    width: 18,
+                    child: canEdit
+                        ? Center(
+                            child: GestureDetector(
+                              onTap: onEdit,
+                              child: const Icon(Icons.edit_outlined,
+                                  size: 14, color: Colors.grey),
+                            ),
+                          )
+                        : null,
+                  ),
+                  SizedBox(
+                    width: 18,
+                    child: canDelete
+                        ? Center(
+                            child: GestureDetector(
+                              onTap: onDelete,
+                              child: const Icon(Icons.delete_outline,
+                                  size: 14, color: Colors.grey),
+                            ),
+                          )
+                        : null,
+                  ),
                 ]),
                 const SizedBox(height: 4),
                 Text(data['text'] ?? '',

@@ -817,42 +817,45 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.orange.withOpacity(0.2)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _metaCol(
-                    Icons.local_fire_department,
-                    '칼로리',
-                    widget.recipe['calorie'] ?? '-',
-                  ),
-                  _vDivider(),
-                  _metaCol(
-                    Icons.access_time,
-                    '시간',
-                    widget.recipe['time'] ?? '-',
-                  ),
-                  _vDivider(),
-                  _metaCol(Icons.people, '분량', widget.recipe['qnt'] ?? '-'),
-                  _vDivider(),
-                  _metaCol(
-                    Icons.trending_up,
-                    '난이도',
-                    widget.recipe['level'] ?? '-',
-                  ),
-                  _vDivider(),
-                  _metaCol(
-                    Icons.favorite,
-                    '좋아요',
-                    '${widget.recipe['likeCount'] ?? 0}',
-                    iconColor: Colors.red,
-                  ),
-                  _vDivider(),
-                  _metaCol(
-                    Icons.visibility_outlined,
-                    '조회수',
-                    '${widget.recipe['viewCount'] ?? 0}',
-                  ),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _metaCol(
+                      Icons.local_fire_department,
+                      '칼로리',
+                      widget.recipe['calorie'] ?? '-',
+                    ),
+                    _vDivider(),
+                    _metaCol(
+                      Icons.access_time,
+                      '시간',
+                      widget.recipe['time'] ?? '-',
+                    ),
+                    _vDivider(),
+                    _metaCol(Icons.people, '분량', widget.recipe['qnt'] ?? '-'),
+                    _vDivider(),
+                    _metaCol(
+                      Icons.trending_up,
+                      '난이도',
+                      widget.recipe['level'] ?? '-',
+                    ),
+                    _vDivider(),
+                    _metaCol(
+                      Icons.favorite,
+                      '좋아요',
+                      '${widget.recipe['likeCount'] ?? 0}',
+                      iconColor: Colors.red,
+                    ),
+                    _vDivider(),
+                    _metaCol(
+                      Icons.visibility_outlined,
+                      '조회수',
+                      '${widget.recipe['viewCount'] ?? 0}',
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1159,7 +1162,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                   final canDelete =
                       currentUser != null &&
                       (commentUserId == currentUser.id ||
-                          widget.recipe['authorId'] == currentUser.id);
+                          widget.recipe['authorId'] == currentUser.id ||
+                          AuthService.instance.isAdmin);
                   final canEdit =
                       currentUser != null && commentUserId == currentUser.id;
 
@@ -1184,7 +1188,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
 
   // ── 하단 고정 입력창 (별점 + 댓글) ──────────────────
   Widget _buildCommentInput(BuildContext context) {
-    return Container(
+    return SafeArea(
+      top: false,
+      child: Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
@@ -1341,6 +1347,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -1797,57 +1804,72 @@ class _RecipeCommentCardState extends State<_RecipeCommentCard> {
                       ts != null ? _formatDate(ts.toDate()) : '',
                       style: const TextStyle(fontSize: 11, color: Colors.grey),
                     ),
-                    if (widget.canEdit) ...[
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: _editComment,
-                        child: const Icon(
-                          Icons.edit_outlined,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                    if (widget.canDelete) ...[
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: widget.onDelete,
-                        child: const Icon(
-                          Icons.delete_outline,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                    if (user != null &&
-                        userId != null &&
-                        userId.isNotEmpty &&
-                        userId != user.id)
-                      PopupMenuButton<String>(
-                        icon: const Icon(
-                          Icons.more_vert,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                        iconSize: 16,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onSelected: (val) {
-                          if (val == 'message') {
-                            _messageAuthor(
-                              userId,
-                              d['author'] as String?,
-                              d['authorProfileImg'] as String?,
-                            );
-                          }
-                        },
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(
-                            value: 'message',
-                            child: Text('쪽지 보내기'),
-                          ),
-                        ],
-                      ),
+                    SizedBox(
+                      width: 20,
+                      child: widget.canEdit
+                          ? Center(
+                              child: GestureDetector(
+                                onTap: _editComment,
+                                child: const Icon(
+                                  Icons.edit_outlined,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(
+                      width: 20,
+                      child: widget.canDelete
+                          ? Center(
+                              child: GestureDetector(
+                                onTap: widget.onDelete,
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(
+                      width: 20,
+                      child:
+                          (user != null &&
+                              userId != null &&
+                              userId.isNotEmpty &&
+                              userId != user.id)
+                          ? Center(
+                              child: PopupMenuButton<String>(
+                                icon: const Icon(
+                                  Icons.more_vert,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                                iconSize: 16,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onSelected: (val) {
+                                  if (val == 'message') {
+                                    _messageAuthor(
+                                      userId,
+                                      d['author'] as String?,
+                                      d['authorProfileImg'] as String?,
+                                    );
+                                  }
+                                },
+                                itemBuilder: (_) => [
+                                  const PopupMenuItem(
+                                    value: 'message',
+                                    child: Text('쪽지 보내기'),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : null,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -2064,28 +2086,36 @@ class _RecipeReplyCard extends StatelessWidget {
                       ts != null ? _formatDate(ts.toDate()) : '',
                       style: const TextStyle(fontSize: 11, color: Colors.grey),
                     ),
-                    if (canEdit) ...[
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: onEdit,
-                        child: const Icon(
-                          Icons.edit_outlined,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                    if (canDelete) ...[
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: onDelete,
-                        child: const Icon(
-                          Icons.delete_outline,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
+                    SizedBox(
+                      width: 18,
+                      child: canEdit
+                          ? Center(
+                              child: GestureDetector(
+                                onTap: onEdit,
+                                child: const Icon(
+                                  Icons.edit_outlined,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(
+                      width: 18,
+                      child: canDelete
+                          ? Center(
+                              child: GestureDetector(
+                                onTap: onDelete,
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
