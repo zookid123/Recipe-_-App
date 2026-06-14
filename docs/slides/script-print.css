@@ -1,0 +1,11 @@
+body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; font-size: 14.5px; line-height: 2; color: #222; }
+h1 { font-size: 22px; text-align: center; border-bottom: 3px solid #FF6B35; padding-bottom: 8px; margin-bottom: 4px; }
+.subtitle { text-align: center; color: #666; font-size: 13px; margin-bottom: 28px; }
+.slide { margin-bottom: 10px; }
+h2 { font-size: 16px; background: #FF6B35; color: white; padding: 7px 14px; border-radius: 4px; margin-top: 0; margin-bottom: 8px; }
+.script { background: #fafafa; border-left: 4px solid #FF6B35; padding: 13px 17px; border-radius: 0 4px 4px 0; white-space: pre-wrap; line-height: 2.1; }
+table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 13px; }
+th { background: #FF6B35; color: white; padding: 8px 12px; text-align: left; }
+td { padding: 7px 12px; border-bottom: 1px solid #eee; }
+tr:last-child td { font-weight: bold; background: #fff3ee; }
+.note { font-size: 12px; color: #888; border: 1px dashed #ccc; padding: 9px 13px; border-radius: 4px; margin-bottom: 22px; line-height: 1.8; }
